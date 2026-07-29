@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
@@ -15,16 +16,29 @@ app = FastAPI(
     description="API para respaldar archivos y textos en el servidor",
 )
 
+
+# =========================================================
+# RUTAS DEL PROYECTO
+# =========================================================
+
+# webhook.py está dentro de /api.
+# parent = /api
+# parent.parent = raíz del proyecto
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carpeta donde estará el frontend.
+PUBLIC_DIR = BASE_DIR / "public"
+
 # En Vercel solamente /tmp permite escritura.
 # IMPORTANTE: su contenido es temporal y puede desaparecer.
 BACKUP_DIR = Path("/tmp/backups")
 
-# Para un servidor propio puedes usar, por ejemplo:
-# BACKUP_DIR = Path("./backups")
-# BACKUP_DIR = Path("/var/lib/my-api/backups")
-
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
+
+# =========================================================
+# MODELOS
+# =========================================================
 
 class TextFileRequest(BaseModel):
     text: str = Field(
@@ -32,11 +46,16 @@ class TextFileRequest(BaseModel):
         min_length=1,
         description="Contenido que se guardará dentro del archivo",
     )
+
     filename: str | None = Field(
         default=None,
         description="Nombre opcional del archivo, con o sin extensión .txt",
     )
 
+
+# =========================================================
+# FUNCIONES AUXILIARES
+# =========================================================
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -44,15 +63,21 @@ def utc_now() -> datetime:
 
 def sanitize_filename(filename: str) -> str:
     """
-    Limpia el nombre para evitar rutas como:
+    Limpia el nombre para evitar rutas peligrosas como:
+
     ../../archivo.txt
     """
+
     filename = Path(filename).name.strip()
 
-    # Reemplaza caracteres extraños por guion bajo.
-    filename = re.sub(r"[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ._-]", "_", filename)
+    # Reemplaza caracteres no permitidos por guion bajo.
+    filename = re.sub(
+        r"[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ._-]",
+        "_",
+        filename,
+    )
 
-    # Evita nombres vacíos, ocultos o rutas especiales.
+    # Evita nombres ocultos, ".", ".." o nombres vacíos.
     filename = filename.lstrip(".")
 
     if not filename:
@@ -64,11 +89,17 @@ def sanitize_filename(filename: str) -> str:
 
 def create_unique_path(filename: str) -> Path:
     """
-    Si el archivo ya existe, genera otro nombre para no sobrescribirlo.
+    Evita sobrescribir archivos.
+
+    Si ya existe:
 
     ejemplo.txt
+
+    genera algo como:
+
     ejemplo_20260729_104700_a1b2c3.txt
     """
+
     filename = sanitize_filename(filename)
     destination = BACKUP_DIR / filename
 
@@ -80,13 +111,18 @@ def create_unique_path(filename: str) -> Path:
     unique_id = uuid.uuid4().hex[:6]
 
     new_filename = (
-        f"{file_path.stem}_{timestamp}_{unique_id}{file_path.suffix}"
+        f"{file_path.stem}_{timestamp}_{unique_id}"
+        f"{file_path.suffix}"
     )
 
     return BACKUP_DIR / new_filename
 
 
 def calculate_sha256(file_path: Path) -> str:
+    """
+    Calcula el hash SHA-256 de un archivo.
+    """
+
     sha256 = hashlib.sha256()
 
     with file_path.open("rb") as file:
@@ -96,6 +132,10 @@ def calculate_sha256(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
+# =========================================================
+# ENDPOINT PARA SUBIR ARCHIVOS
+# =========================================================
+
 @app.post("/upload")
 async def upload_files(
     files: List[UploadFile] = File(...),
@@ -103,6 +143,7 @@ async def upload_files(
     """
     Recibe uno o varios archivos mediante multipart/form-data.
     """
+
     saved_files = []
 
     for uploaded_file in files:
@@ -123,7 +164,10 @@ async def upload_files(
 
             raise HTTPException(
                 status_code=500,
-                detail=f"No se pudo guardar {original_name}: {str(exc)}",
+                detail=(
+                    f"No se pudo guardar el archivo "
+                    f"{original_name}: {str(exc)}"
+                ),
             ) from exc
 
         finally:
@@ -138,6 +182,7 @@ async def upload_files(
                 "sha256": calculate_sha256(destination),
                 "path": str(destination),
                 "created_at": utc_now().isoformat(),
+                "download_url": f"/files/{destination.name}",
             }
         )
 
@@ -148,24 +193,43 @@ async def upload_files(
     }
 
 
+# =========================================================
+# ENDPOINT PARA GUARDAR TEXTO
+# =========================================================
+
 @app.post("/text")
 def save_text(payload: TextFileRequest):
     """
-    Recibe JSON con un texto grande y lo guarda como archivo .txt.
+    Recibe JSON con un texto y lo guarda como archivo TXT.
+
+    Ejemplo:
+
+    {
+        "filename": "ejemplo.txt",
+        "text": "Contenido del archivo"
+    }
     """
+
     if payload.filename:
         filename = sanitize_filename(payload.filename)
 
         if not filename.lower().endswith(".txt"):
             filename += ".txt"
+
     else:
         timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
-        filename = f"text_{timestamp}_{uuid.uuid4().hex[:6]}.txt"
+        unique_id = uuid.uuid4().hex[:6]
+
+        filename = f"text_{timestamp}_{unique_id}.txt"
 
     destination = create_unique_path(filename)
 
     try:
-        destination.write_text(payload.text, encoding="utf-8")
+        destination.write_text(
+            payload.text,
+            encoding="utf-8",
+        )
+
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -182,21 +246,36 @@ def save_text(payload: TextFileRequest):
         "sha256": calculate_sha256(destination),
         "path": str(destination),
         "created_at": utc_now().isoformat(),
+        "download_url": f"/files/{destination.name}",
     }
 
+
+# =========================================================
+# ENDPOINT PARA LISTAR ARCHIVOS
+# =========================================================
 
 @app.get("/files")
 def list_files():
     """
-    Lista los archivos respaldados.
+    Lista todos los archivos guardados en /tmp/backups.
     """
+
     files = []
 
-    for file_path in sorted(
-        BACKUP_DIR.iterdir(),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    ):
+    try:
+        file_paths = sorted(
+            BACKUP_DIR.iterdir(),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"No se pudieron listar los archivos: {str(exc)}",
+        ) from exc
+
+    for file_path in file_paths:
         if not file_path.is_file():
             continue
 
@@ -222,11 +301,16 @@ def list_files():
     }
 
 
+# =========================================================
+# ENDPOINT PARA DESCARGAR ARCHIVOS
+# =========================================================
+
 @app.get("/files/{filename}")
 def download_file(filename: str):
     """
-    Descarga un archivo respaldado.
+    Descarga un archivo guardado.
     """
+
     safe_filename = sanitize_filename(filename)
     file_path = BACKUP_DIR / safe_filename
 
@@ -243,10 +327,45 @@ def download_file(filename: str):
     )
 
 
+# =========================================================
+# HEALTH CHECK
+# =========================================================
+
 @app.get("/health")
 def health():
     return {
         "status": "ok",
         "time": utc_now().isoformat(),
         "backup_directory": str(BACKUP_DIR),
+        "public_directory": str(PUBLIC_DIR),
+        "public_directory_exists": PUBLIC_DIR.exists(),
     }
+
+
+# =========================================================
+# FRONTEND ESTÁTICO
+# =========================================================
+#
+# Este montaje debe quedar al final, después de todos los
+# endpoints de la API.
+#
+# De esta forma:
+#
+# GET  /              -> public/index.html
+# GET  /style.css     -> public/style.css
+# GET  /app.js        -> public/app.js
+# POST /upload        -> endpoint FastAPI
+# POST /text          -> endpoint FastAPI
+# GET  /files         -> endpoint FastAPI
+# GET  /health        -> endpoint FastAPI
+#
+
+if PUBLIC_DIR.exists():
+    app.mount(
+        "/",
+        StaticFiles(
+            directory=str(PUBLIC_DIR),
+            html=True,
+        ),
+        name="public",
+    )
