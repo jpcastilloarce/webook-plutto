@@ -806,12 +806,16 @@
     </section>
   </div>
 
-  <script>
+  <script type="module">
+    import { upload } from "https://esm.sh/@vercel/blob@2.6.1/client";
+
     const API = {
       health: "/health",
       upload: "/upload",
       text: "/text",
-      files: "/files"
+      files: "/files",
+      blobUpload: "/api/blob-upload",
+      blobs: "/api/blobs"
     };
 
     const healthBadge = document.getElementById("healthBadge");
@@ -977,6 +981,25 @@
       clearMessage(uploadMessage);
     });
 
+    function createBlobPath(filename) {
+      const safeName = filename
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9._-]/g, "_")
+        .replace(/^\.+/, "")
+        .slice(0, 180) || "archivo";
+
+      return `uploads/${safeName}`;
+    }
+
+    async function uploadBinaryToBlob(file) {
+      return await upload(createBlobPath(file.name), file, {
+        access: "public",
+        handleUploadUrl: API.blobUpload,
+        multipart: true
+      });
+    }
+
     uploadForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       clearMessage(uploadMessage);
@@ -986,36 +1009,68 @@
         return;
       }
 
-      const formData = new FormData();
-
-      chosenFiles.forEach((file) => {
-        formData.append("files", file);
-      });
+      const textFiles = chosenFiles.filter((file) => isTextFile(file.name));
+      const binaryFiles = chosenFiles.filter((file) => !isTextFile(file.name));
 
       uploadButton.disabled = true;
       uploadButton.innerHTML = '<span class="spinner"></span> Subiendo...';
 
+      const uploadedNames = [];
+      const errors = [];
+
       try {
-        const response = await fetch(API.upload, {
-          method: "POST",
-          body: formData
-        });
+        if (textFiles.length) {
+          const formData = new FormData();
 
-        const data = await parseResponse(response);
+          textFiles.forEach((file) => {
+            formData.append("files", file);
+          });
 
-        if (!response.ok) {
-          throw new Error(data.detail || "No fue posible subir los archivos.");
+          const response = await fetch(API.upload, {
+            method: "POST",
+            body: formData
+          });
+
+          const data = await parseResponse(response);
+
+          if (!response.ok) {
+            throw new Error(data.detail || "No fue posible guardar los textos.");
+          }
+
+          (data.files || []).forEach((file) => {
+            uploadedNames.push(`${file.stored_filename} (texto temporal)`);
+          });
         }
 
-        const names = (data.files || [])
-          .map((file) => file.stored_filename)
-          .join(", ");
+        for (let index = 0; index < binaryFiles.length; index += 1) {
+          const file = binaryFiles[index];
 
-        setMessage(
-          uploadMessage,
-          `Archivos guardados correctamente:\n${names}`,
-          "success"
-        );
+          uploadButton.innerHTML =
+            `<span class="spinner"></span> Subiendo ${index + 1}/${binaryFiles.length} a Blob...`;
+
+          try {
+            const blob = await uploadBinaryToBlob(file);
+            uploadedNames.push(`${file.name} (Vercel Blob)`);
+            console.log("Blob subido:", blob);
+          } catch (error) {
+            errors.push(`${file.name}: ${error.message}`);
+          }
+        }
+
+        if (uploadedNames.length) {
+          const successText =
+            `Archivos guardados correctamente:\n${uploadedNames.join("\n")}`;
+
+          setMessage(
+            uploadMessage,
+            errors.length
+              ? `${successText}\n\nNo se pudieron subir:\n${errors.join("\n")}`
+              : successText,
+            errors.length ? "error" : "success"
+          );
+        } else {
+          throw new Error(errors.join("\n") || "No se subió ningún archivo.");
+        }
 
         chosenFiles = [];
         fileInput.value = "";
@@ -1200,14 +1255,30 @@
       `;
 
       try {
-        const response = await fetch(API.files, { cache: "no-store" });
-        const data = await parseResponse(response);
+        const [tmpResponse, blobResponse] = await Promise.all([
+          fetch(API.files, { cache: "no-store" }),
+          fetch(API.blobs, { cache: "no-store" })
+        ]);
 
-        if (!response.ok) {
-          throw new Error(data.detail || "No fue posible obtener los archivos.");
+        const [tmpData, blobData] = await Promise.all([
+          parseResponse(tmpResponse),
+          parseResponse(blobResponse)
+        ]);
+
+        if (!tmpResponse.ok) {
+          throw new Error(tmpData.detail || "No fue posible obtener los textos.");
         }
 
-        const files = Array.isArray(data.files) ? data.files : [];
+        if (!blobResponse.ok) {
+          throw new Error(blobData.detail || "No fue posible obtener Vercel Blob.");
+        }
+
+        const files = [
+          ...(Array.isArray(tmpData.files) ? tmpData.files : []),
+          ...(Array.isArray(blobData.files) ? blobData.files : [])
+        ].sort((a, b) => {
+          return new Date(b.modified_at || 0) - new Date(a.modified_at || 0);
+        });
         filesCount.textContent = `${files.length} ${files.length === 1 ? "archivo" : "archivos"}`;
 
         if (!files.length) {
@@ -1231,12 +1302,14 @@
                   ${formatBytes(file.size_bytes)}
                   ·
                   ${formatDate(file.modified_at)}
+                  ·
+                  ${file.storage === "blob" ? "Vercel Blob" : "Texto temporal"}
                 </div>
               </div>
 
               <div class="file-actions">
                 ${
-                  isTextFile(file.filename)
+                  (file.is_text === true || (file.storage !== "blob" && isTextFile(file.filename)))
                     ? `
                       <button
                         class="action-button"
