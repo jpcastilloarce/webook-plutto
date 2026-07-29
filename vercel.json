@@ -6,6 +6,14 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/blob-upload.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/blobs.js",
+      "use": "@vercel/node"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
@@ -14,6 +22,14 @@
     {
       "src": "/",
       "dest": "/public/index.html"
+    },
+    {
+      "src": "/api/blob-upload",
+      "dest": "/api/blob-upload.js"
+    },
+    {
+      "src": "/api/blobs",
+      "dest": "/api/blobs.js"
     },
     {
       "src": "/upload",
