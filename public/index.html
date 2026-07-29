@@ -472,6 +472,112 @@
       animation: spin 0.8s linear infinite;
     }
 
+
+    .text-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(2, 6, 23, 0.82);
+      backdrop-filter: blur(8px);
+    }
+
+    .text-viewer.show {
+      display: flex;
+    }
+
+    .text-viewer-panel {
+      width: min(960px, 100%);
+      max-height: calc(100vh - 40px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #0f172a;
+      box-shadow: var(--shadow);
+    }
+
+    .text-viewer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .text-viewer-title {
+      min-width: 0;
+    }
+
+    .text-viewer-title strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .text-viewer-title span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .text-viewer-actions {
+      display: flex;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+
+    .text-viewer-content {
+      width: 100%;
+      min-height: 420px;
+      max-height: calc(100vh - 150px);
+      margin: 0;
+      padding: 18px;
+      border: 0;
+      border-radius: 0;
+      resize: none;
+      color: var(--text);
+      background: #020617;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.55;
+      outline: none;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .action-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      background: rgba(30, 41, 59, 0.75);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .action-button:hover {
+      border-color: var(--primary);
+      color: #c7d7ff;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
     footer {
       margin-top: 24px;
       color: var(--muted);
@@ -517,8 +623,22 @@
         width: 100%;
       }
 
-      .download-link {
+      .download-link,
+      .action-button {
         width: 100%;
+      }
+
+      .text-viewer-header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .text-viewer-actions {
+        width: 100%;
+      }
+
+      .text-viewer-actions .action-button {
+        flex: 1;
       }
     }
   </style>
@@ -657,6 +777,35 @@
     </footer>
   </div>
 
+
+  <div id="textViewer" class="text-viewer" aria-hidden="true">
+    <section class="text-viewer-panel" role="dialog" aria-modal="true" aria-labelledby="textViewerName">
+      <div class="text-viewer-header">
+        <div class="text-viewer-title">
+          <strong id="textViewerName">Contenido del archivo</strong>
+          <span id="textViewerStatus">Listo para copiar</span>
+        </div>
+
+        <div class="text-viewer-actions">
+          <button id="copyTextButton" class="action-button" type="button">
+            Copiar
+          </button>
+
+          <button id="closeTextViewerButton" class="action-button" type="button">
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      <textarea
+        id="textViewerContent"
+        class="text-viewer-content"
+        readonly
+        spellcheck="false"
+      ></textarea>
+    </section>
+  </div>
+
   <script>
     const API = {
       health: "/health",
@@ -688,6 +837,20 @@
     const filesCount = document.getElementById("filesCount");
     const filesMessage = document.getElementById("filesMessage");
     const fileList = document.getElementById("fileList");
+
+    const textViewer = document.getElementById("textViewer");
+    const textViewerName = document.getElementById("textViewerName");
+    const textViewerStatus = document.getElementById("textViewerStatus");
+    const textViewerContent = document.getElementById("textViewerContent");
+    const copyTextButton = document.getElementById("copyTextButton");
+    const closeTextViewerButton = document.getElementById("closeTextViewerButton");
+
+    const TEXT_EXTENSIONS = new Set([
+      "txt", "md", "json", "csv", "log", "xml", "html", "htm",
+      "css", "js", "jsx", "ts", "tsx", "py", "java", "sql",
+      "yaml", "yml", "ini", "conf", "properties", "sh", "bat",
+      "ps1", "c", "cpp", "h", "hpp", "go", "rs", "php", "rb"
+    ]);
 
     let chosenFiles = [];
 
@@ -930,6 +1093,99 @@
       }
     });
 
+
+    function getExtension(filename = "") {
+      const normalized = filename.toLowerCase();
+      const lastDot = normalized.lastIndexOf(".");
+      return lastDot >= 0 ? normalized.slice(lastDot + 1) : "";
+    }
+
+    function isTextFile(filename = "") {
+      return TEXT_EXTENSIONS.has(getExtension(filename));
+    }
+
+    function openTextViewer(filename) {
+      textViewerName.textContent = filename || "Contenido del archivo";
+      textViewerStatus.textContent = "Cargando contenido...";
+      textViewerContent.value = "";
+      textViewer.classList.add("show");
+      textViewer.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeTextViewer() {
+      textViewer.classList.remove("show");
+      textViewer.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("modal-open");
+      textViewerContent.value = "";
+    }
+
+    async function viewTextFile(url, filename) {
+      openTextViewer(filename);
+
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+
+        if (!response.ok) {
+          const data = await parseResponse(response);
+          throw new Error(data.detail || `Error HTTP ${response.status}`);
+        }
+
+        const content = await response.text();
+        textViewerContent.value = content;
+        textViewerStatus.textContent =
+          `${content.length.toLocaleString("es-CL")} caracteres · listo para copiar`;
+      } catch (error) {
+        textViewerContent.value = `No fue posible abrir el archivo.\n\n${error.message}`;
+        textViewerStatus.textContent = "Error al cargar";
+      }
+    }
+
+    async function copyViewedText() {
+      const text = textViewerContent.value;
+
+      if (!text) {
+        textViewerStatus.textContent = "No hay contenido para copiar";
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(text);
+        textViewerStatus.textContent = "Texto copiado al portapapeles";
+      } catch (error) {
+        textViewerContent.focus();
+        textViewerContent.select();
+
+        const copied = document.execCommand("copy");
+        textViewerStatus.textContent = copied
+          ? "Texto copiado al portapapeles"
+          : "Selecciona el texto y cópialo manualmente";
+      }
+    }
+
+    copyTextButton.addEventListener("click", copyViewedText);
+    closeTextViewerButton.addEventListener("click", closeTextViewer);
+
+    textViewer.addEventListener("click", (event) => {
+      if (event.target === textViewer) {
+        closeTextViewer();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && textViewer.classList.contains("show")) {
+        closeTextViewer();
+      }
+    });
+
+    fileList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-view-text]");
+
+      if (!button) return;
+
+      viewTextFile(button.dataset.url, button.dataset.filename);
+    });
+
     async function loadFiles() {
       clearMessage(filesMessage);
       refreshButton.disabled = true;
@@ -979,13 +1235,29 @@
               </div>
 
               <div class="file-actions">
-                <a
-                  class="download-link"
-                  href="${url}"
-                  download
-                >
-                  Descargar
-                </a>
+                ${
+                  isTextFile(file.filename)
+                    ? `
+                      <button
+                        class="action-button"
+                        type="button"
+                        data-view-text
+                        data-url="${escapeHtml(url)}"
+                        data-filename="${name}"
+                      >
+                        Ver y copiar
+                      </button>
+                    `
+                    : `
+                      <a
+                        class="download-link"
+                        href="${escapeHtml(url)}"
+                        download
+                      >
+                        Descargar
+                      </a>
+                    `
+                }
               </div>
             </article>
           `;
