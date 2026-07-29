@@ -1,1 +1,1009 @@
-hola mundo
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>File Backup</title>
+  <meta name="description" content="Interfaz para subir archivos y guardar textos mediante FastAPI." />
+
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-soft: #11182c;
+      --panel: rgba(17, 24, 39, 0.88);
+      --panel-strong: #151d33;
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #4f7cff;
+      --primary-hover: #3d68e8;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(79, 124, 255, 0.24), transparent 32%),
+        radial-gradient(circle at 85% 10%, rgba(34, 197, 94, 0.12), transparent 28%),
+        linear-gradient(180deg, #0b1020 0%, #0a0f1b 100%);
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      box-shadow: 0 12px 30px rgba(79, 124, 255, 0.35);
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      letter-spacing: -0.03em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .health-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.72);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .health-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--warning);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+    }
+
+    .health-badge.ok .health-dot {
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+    }
+
+    .health-badge.error .health-dot {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+    }
+
+    .hero {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(79, 124, 255, 0.12), rgba(124, 58, 237, 0.08));
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 760px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+    }
+
+    .card {
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .card.full {
+      grid-column: 1 / -1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .card-header h3 {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .card-header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .dropzone {
+      display: grid;
+      place-items: center;
+      min-height: 210px;
+      padding: 24px;
+      border: 1.5px dashed rgba(148, 163, 184, 0.32);
+      border-radius: 16px;
+      text-align: center;
+      background: rgba(15, 23, 42, 0.55);
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+      cursor: pointer;
+    }
+
+    .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(79, 124, 255, 0.11);
+      transform: translateY(-2px);
+    }
+
+    .dropzone-icon {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 12px;
+      border-radius: 16px;
+      background: rgba(79, 124, 255, 0.16);
+      font-size: 26px;
+    }
+
+    .dropzone strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    .dropzone span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    .selected-files {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .selected-file {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.65);
+      font-size: 13px;
+    }
+
+    .selected-file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .selected-file-size {
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #dbe5f5;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      color: var(--text);
+      background: rgba(15, 23, 42, 0.82);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(79, 124, 255, 0.12);
+    }
+
+    textarea {
+      min-height: 245px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .counter {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 10px 15px;
+      border-radius: 12px;
+      color: white;
+      background: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s, background 0.18s, opacity 0.18s;
+    }
+
+    .btn:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+      transform: none;
+    }
+
+    .btn.secondary {
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .btn.secondary:hover {
+      background: var(--panel-strong);
+    }
+
+    .message {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      line-height: 1.45;
+      font-size: 13px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      border: 1px solid rgba(34, 197, 94, 0.38);
+      color: #bbf7d0;
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .message.error {
+      border: 1px solid rgba(239, 68, 68, 0.38);
+      color: #fecaca;
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .files-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .files-count {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .file-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.68);
+    }
+
+    .file-main {
+      min-width: 0;
+    }
+
+    .file-name {
+      overflow: hidden;
+      margin-bottom: 5px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      background: rgba(30, 41, 59, 0.75);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .download-link:hover {
+      border-color: var(--primary);
+      color: #c7d7ff;
+    }
+
+    .empty {
+      padding: 28px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .loading {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(148, 163, 184, 0.25);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    footer {
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 820px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card.full {
+        grid-column: auto;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell {
+        width: min(100% - 20px, 1180px);
+        padding-top: 20px;
+      }
+
+      .hero,
+      .card {
+        padding: 18px;
+      }
+
+      .file-item {
+        grid-template-columns: 1fr;
+      }
+
+      .file-actions {
+        width: 100%;
+      }
+
+      .download-link {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">📦</div>
+        <div>
+          <h1>File Backup</h1>
+          <p>Archivos y textos respaldados desde tu API FastAPI.</p>
+        </div>
+      </div>
+
+      <div id="healthBadge" class="health-badge">
+        <span class="health-dot"></span>
+        <span id="healthText">Comprobando API...</span>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h2>Guarda archivos o textos desde cualquier navegador</h2>
+      <p>
+        Esta interfaz consume los endpoints <strong>/upload</strong>, <strong>/text</strong>,
+        <strong>/files</strong> y <strong>/health</strong> del mismo dominio.
+      </p>
+    </section>
+
+    <main class="grid">
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h3>Subir archivos</h3>
+            <p>Arrastra archivos aquí o selecciónalos desde tu equipo.</p>
+          </div>
+        </div>
+
+        <form id="uploadForm">
+          <label id="dropzone" class="dropzone" for="fileInput">
+            <div>
+              <div class="dropzone-icon">⬆️</div>
+              <strong>Arrastra tus archivos aquí</strong>
+              <span>o haz clic para seleccionarlos</span>
+            </div>
+          </label>
+
+          <input id="fileInput" class="hidden-input" type="file" multiple />
+
+          <div id="selectedFiles" class="selected-files"></div>
+
+          <div class="actions">
+            <button id="uploadButton" class="btn" type="submit">
+              Subir archivos
+            </button>
+
+            <button id="clearFilesButton" class="btn secondary" type="button">
+              Limpiar selección
+            </button>
+          </div>
+
+          <div id="uploadMessage" class="message"></div>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h3>Guardar texto</h3>
+            <p>Pega un texto grande y guárdalo como archivo TXT.</p>
+          </div>
+        </div>
+
+        <form id="textForm">
+          <div class="field">
+            <label for="filenameInput">Nombre del archivo</label>
+            <input
+              id="filenameInput"
+              type="text"
+              placeholder="por ejemplo: notas.txt"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="field">
+            <label for="textInput">Contenido</label>
+            <textarea
+              id="textInput"
+              placeholder="Escribe o pega aquí el contenido..."
+              required
+            ></textarea>
+
+            <div class="counter">
+              <span id="characterCount">0 caracteres</span>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="saveTextButton" class="btn" type="submit">
+              Guardar texto
+            </button>
+
+            <button id="clearTextButton" class="btn secondary" type="button">
+              Limpiar
+            </button>
+          </div>
+
+          <div id="textMessage" class="message"></div>
+        </form>
+      </section>
+
+      <section class="card full">
+        <div class="card-header">
+          <div>
+            <h3>Archivos guardados</h3>
+            <p>Listado actual de archivos disponibles en el servidor.</p>
+          </div>
+        </div>
+
+        <div class="files-toolbar">
+          <div id="filesCount" class="files-count">0 archivos</div>
+
+          <button id="refreshButton" class="btn secondary" type="button">
+            Actualizar
+          </button>
+        </div>
+
+        <div id="filesMessage" class="message"></div>
+        <div id="fileList" class="file-list"></div>
+      </section>
+    </main>
+
+    <footer>
+      En Vercel, los archivos guardados en <code>/tmp</code> son temporales y pueden desaparecer.
+    </footer>
+  </div>
+
+  <script>
+    const API = {
+      health: "/health",
+      upload: "/upload",
+      text: "/text",
+      files: "/files"
+    };
+
+    const healthBadge = document.getElementById("healthBadge");
+    const healthText = document.getElementById("healthText");
+
+    const uploadForm = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+    const dropzone = document.getElementById("dropzone");
+    const selectedFiles = document.getElementById("selectedFiles");
+    const uploadButton = document.getElementById("uploadButton");
+    const clearFilesButton = document.getElementById("clearFilesButton");
+    const uploadMessage = document.getElementById("uploadMessage");
+
+    const textForm = document.getElementById("textForm");
+    const filenameInput = document.getElementById("filenameInput");
+    const textInput = document.getElementById("textInput");
+    const characterCount = document.getElementById("characterCount");
+    const saveTextButton = document.getElementById("saveTextButton");
+    const clearTextButton = document.getElementById("clearTextButton");
+    const textMessage = document.getElementById("textMessage");
+
+    const refreshButton = document.getElementById("refreshButton");
+    const filesCount = document.getElementById("filesCount");
+    const filesMessage = document.getElementById("filesMessage");
+    const fileList = document.getElementById("fileList");
+
+    let chosenFiles = [];
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+
+      const units = ["B", "KB", "MB", "GB"];
+      const index = Math.min(
+        Math.floor(Math.log(bytes) / Math.log(1024)),
+        units.length - 1
+      );
+
+      const value = bytes / Math.pow(1024, index);
+      return `${value.toFixed(index === 0 ? 0 : 2)} ${units[index]}`;
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+
+      return date.toLocaleString("es-CL");
+    }
+
+    function setMessage(element, text, type) {
+      element.className = `message show ${type}`;
+      element.textContent = text;
+    }
+
+    function clearMessage(element) {
+      element.className = "message";
+      element.textContent = "";
+    }
+
+    function escapeHtml(value) {
+      const div = document.createElement("div");
+      div.textContent = value ?? "";
+      return div.innerHTML;
+    }
+
+    async function parseResponse(response) {
+      const type = response.headers.get("content-type") || "";
+
+      if (type.includes("application/json")) {
+        return await response.json();
+      }
+
+      const text = await response.text();
+      return { detail: text || `Error HTTP ${response.status}` };
+    }
+
+    async function checkHealth() {
+      try {
+        const response = await fetch(API.health, { cache: "no-store" });
+        const data = await parseResponse(response);
+
+        if (!response.ok) {
+          throw new Error(data.detail || "API no disponible");
+        }
+
+        healthBadge.className = "health-badge ok";
+        healthText.textContent = "API conectada";
+      } catch (error) {
+        healthBadge.className = "health-badge error";
+        healthText.textContent = "API sin conexión";
+      }
+    }
+
+    function renderSelectedFiles() {
+      selectedFiles.innerHTML = "";
+
+      if (!chosenFiles.length) {
+        return;
+      }
+
+      chosenFiles.forEach((file) => {
+        const item = document.createElement("div");
+        item.className = "selected-file";
+
+        item.innerHTML = `
+          <span class="selected-file-name">${escapeHtml(file.name)}</span>
+          <span class="selected-file-size">${formatBytes(file.size)}</span>
+        `;
+
+        selectedFiles.appendChild(item);
+      });
+    }
+
+    function setChosenFiles(fileListValue) {
+      chosenFiles = Array.from(fileListValue || []);
+      renderSelectedFiles();
+      clearMessage(uploadMessage);
+    }
+
+    fileInput.addEventListener("change", () => {
+      setChosenFiles(fileInput.files);
+    });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropzone.classList.add("dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropzone.classList.remove("dragover");
+      });
+    });
+
+    dropzone.addEventListener("drop", (event) => {
+      setChosenFiles(event.dataTransfer.files);
+    });
+
+    clearFilesButton.addEventListener("click", () => {
+      chosenFiles = [];
+      fileInput.value = "";
+      renderSelectedFiles();
+      clearMessage(uploadMessage);
+    });
+
+    uploadForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearMessage(uploadMessage);
+
+      if (!chosenFiles.length) {
+        setMessage(uploadMessage, "Selecciona al menos un archivo.", "error");
+        return;
+      }
+
+      const formData = new FormData();
+
+      chosenFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      uploadButton.disabled = true;
+      uploadButton.innerHTML = '<span class="spinner"></span> Subiendo...';
+
+      try {
+        const response = await fetch(API.upload, {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await parseResponse(response);
+
+        if (!response.ok) {
+          throw new Error(data.detail || "No fue posible subir los archivos.");
+        }
+
+        const names = (data.files || [])
+          .map((file) => file.stored_filename)
+          .join(", ");
+
+        setMessage(
+          uploadMessage,
+          `Archivos guardados correctamente:\n${names}`,
+          "success"
+        );
+
+        chosenFiles = [];
+        fileInput.value = "";
+        renderSelectedFiles();
+        await loadFiles();
+      } catch (error) {
+        setMessage(uploadMessage, error.message, "error");
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "Subir archivos";
+      }
+    });
+
+    textInput.addEventListener("input", () => {
+      characterCount.textContent = `${textInput.value.length.toLocaleString("es-CL")} caracteres`;
+    });
+
+    clearTextButton.addEventListener("click", () => {
+      filenameInput.value = "";
+      textInput.value = "";
+      characterCount.textContent = "0 caracteres";
+      clearMessage(textMessage);
+      textInput.focus();
+    });
+
+    textForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      clearMessage(textMessage);
+
+      const text = textInput.value;
+      const filename = filenameInput.value.trim();
+
+      if (!text.trim()) {
+        setMessage(textMessage, "Debes ingresar algún texto.", "error");
+        return;
+      }
+
+      saveTextButton.disabled = true;
+      saveTextButton.innerHTML = '<span class="spinner"></span> Guardando...';
+
+      try {
+        const response = await fetch(API.text, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            filename: filename || null,
+            text
+          })
+        });
+
+        const data = await parseResponse(response);
+
+        if (!response.ok) {
+          throw new Error(data.detail || "No fue posible guardar el texto.");
+        }
+
+        setMessage(
+          textMessage,
+          `Texto guardado como ${data.stored_filename}`,
+          "success"
+        );
+
+        filenameInput.value = "";
+        textInput.value = "";
+        characterCount.textContent = "0 caracteres";
+
+        await loadFiles();
+      } catch (error) {
+        setMessage(textMessage, error.message, "error");
+      } finally {
+        saveTextButton.disabled = false;
+        saveTextButton.textContent = "Guardar texto";
+      }
+    });
+
+    async function loadFiles() {
+      clearMessage(filesMessage);
+      refreshButton.disabled = true;
+      refreshButton.innerHTML = '<span class="spinner"></span> Actualizando...';
+      fileList.innerHTML = `
+        <div class="empty">
+          <span class="loading">
+            <span class="spinner"></span>
+            Cargando archivos...
+          </span>
+        </div>
+      `;
+
+      try {
+        const response = await fetch(API.files, { cache: "no-store" });
+        const data = await parseResponse(response);
+
+        if (!response.ok) {
+          throw new Error(data.detail || "No fue posible obtener los archivos.");
+        }
+
+        const files = Array.isArray(data.files) ? data.files : [];
+        filesCount.textContent = `${files.length} ${files.length === 1 ? "archivo" : "archivos"}`;
+
+        if (!files.length) {
+          fileList.innerHTML = `
+            <div class="empty">
+              Todavía no hay archivos disponibles.
+            </div>
+          `;
+          return;
+        }
+
+        fileList.innerHTML = files.map((file) => {
+          const name = escapeHtml(file.filename);
+          const url = file.download_url || `/files/${encodeURIComponent(file.filename)}`;
+
+          return `
+            <article class="file-item">
+              <div class="file-main">
+                <div class="file-name">${name}</div>
+                <div class="file-meta">
+                  ${formatBytes(file.size_bytes)}
+                  ·
+                  ${formatDate(file.modified_at)}
+                </div>
+              </div>
+
+              <div class="file-actions">
+                <a
+                  class="download-link"
+                  href="${url}"
+                  download
+                >
+                  Descargar
+                </a>
+              </div>
+            </article>
+          `;
+        }).join("");
+      } catch (error) {
+        filesCount.textContent = "No disponible";
+        fileList.innerHTML = "";
+        setMessage(filesMessage, error.message, "error");
+      } finally {
+        refreshButton.disabled = false;
+        refreshButton.textContent = "Actualizar";
+      }
+    }
+
+    refreshButton.addEventListener("click", loadFiles);
+
+    checkHealth();
+    loadFiles();
+  </script>
+</body>
+</html>
