@@ -8,8 +8,27 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/upload",
       "dest": "/api/webhook.py"
+    },
+    {
+      "src": "/text",
+      "dest": "/api/webhook.py"
+    },
+    {
+      "src": "/files",
+      "dest": "/api/webhook.py"
+    },
+    {
+      "src": "/files/(.*)",
+      "dest": "/api/webhook.py"
+    },
+    {
+      "src": "/health",
+      "dest": "/api/webhook.py"
+    },
+    {
+      "handle": "filesystem"
     }
   ]
 }
