@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>File Backup</title>
-  <meta name="description" content="Interfaz para subir archivos y guardar textos mediante FastAPI." />
+  <title>Workspace</title>
+  <meta name="description" content="Portal interno para administrar recursos de trabajo." />
 
   <style>
     :root {
@@ -648,24 +648,23 @@
   <div class="shell">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-mark">📦</div>
+        <div class="brand-mark">◈</div>
         <div>
-          <h1>File Backup</h1>
-          <p>Archivos y textos respaldados desde tu API FastAPI.</p>
+          <h1>Workspace</h1>
+          <p>Portal interno de recursos y notas de trabajo.</p>
         </div>
       </div>
 
       <div id="healthBadge" class="health-badge">
         <span class="health-dot"></span>
-        <span id="healthText">Comprobando API...</span>
+        <span id="healthText">Verificando servicio...</span>
       </div>
     </header>
 
     <section class="hero">
-      <h2>Guarda archivos o textos desde cualquier navegador</h2>
+      <h2>Administra tus recursos desde un solo lugar</h2>
       <p>
-        Esta interfaz consume los endpoints <strong>/upload</strong>, <strong>/text</strong>,
-        <strong>/files</strong> y <strong>/health</strong> del mismo dominio.
+        Utiliza este espacio para agregar, consultar y organizar elementos de trabajo.
       </p>
     </section>
 
@@ -673,8 +672,8 @@
       <section class="card">
         <div class="card-header">
           <div>
-            <h3>Subir archivos</h3>
-            <p>Arrastra archivos aquí o selecciónalos desde tu equipo.</p>
+            <h3>Agregar recursos</h3>
+            <p>Selecciona uno o más elementos desde tu equipo.</p>
           </div>
         </div>
 
@@ -682,8 +681,8 @@
           <label id="dropzone" class="dropzone" for="fileInput">
             <div>
               <div class="dropzone-icon">⬆️</div>
-              <strong>Arrastra tus archivos aquí</strong>
-              <span>o haz clic para seleccionarlos</span>
+              <strong>Arrastra los elementos aquí</strong>
+              <span>o haz clic para buscarlos en tu equipo</span>
             </div>
           </label>
 
@@ -693,11 +692,11 @@
 
           <div class="actions">
             <button id="uploadButton" class="btn" type="submit">
-              Subir archivos
+              Procesar elementos
             </button>
 
             <button id="clearFilesButton" class="btn secondary" type="button">
-              Limpiar selección
+              Restablecer
             </button>
           </div>
 
@@ -708,27 +707,27 @@
       <section class="card">
         <div class="card-header">
           <div>
-            <h3>Guardar texto</h3>
-            <p>Pega un texto grande y guárdalo como archivo TXT.</p>
+            <h3>Nueva nota</h3>
+            <p>Registra información para consultarla posteriormente.</p>
           </div>
         </div>
 
         <form id="textForm">
           <div class="field">
-            <label for="filenameInput">Nombre del archivo</label>
+            <label for="filenameInput">Nombre de referencia</label>
             <input
               id="filenameInput"
               type="text"
-              placeholder="por ejemplo: notas.txt"
+              placeholder="por ejemplo: referencia.txt"
               autocomplete="off"
             />
           </div>
 
           <div class="field">
-            <label for="textInput">Contenido</label>
+            <label for="textInput">Detalle</label>
             <textarea
               id="textInput"
-              placeholder="Escribe o pega aquí el contenido..."
+              placeholder="Escribe o pega aquí la información..."
               required
             ></textarea>
 
@@ -739,7 +738,7 @@
 
           <div class="actions">
             <button id="saveTextButton" class="btn" type="submit">
-              Guardar texto
+              Registrar nota
             </button>
 
             <button id="clearTextButton" class="btn secondary" type="button">
@@ -754,16 +753,16 @@
       <section class="card full">
         <div class="card-header">
           <div>
-            <h3>Archivos guardados</h3>
-            <p>Listado actual de archivos disponibles en el servidor.</p>
+            <h3>Recursos recientes</h3>
+            <p>Elementos disponibles actualmente en el espacio de trabajo.</p>
           </div>
         </div>
 
         <div class="files-toolbar">
-          <div id="filesCount" class="files-count">0 archivos</div>
+          <div id="filesCount" class="files-count">0 elementos</div>
 
           <button id="refreshButton" class="btn secondary" type="button">
-            Actualizar
+            Sincronizar
           </button>
         </div>
 
@@ -773,7 +772,7 @@
     </main>
 
     <footer>
-      En Vercel, los archivos guardados en <code>/tmp</code> son temporales y pueden desaparecer.
+      Algunos elementos pueden estar disponibles solo de manera temporal.
     </footer>
   </div>
 
@@ -782,13 +781,13 @@
     <section class="text-viewer-panel" role="dialog" aria-modal="true" aria-labelledby="textViewerName">
       <div class="text-viewer-header">
         <div class="text-viewer-title">
-          <strong id="textViewerName">Contenido del archivo</strong>
-          <span id="textViewerStatus">Listo para copiar</span>
+          <strong id="textViewerName">Detalle del elemento</strong>
+          <span id="textViewerStatus">Disponible</span>
         </div>
 
         <div class="text-viewer-actions">
           <button id="copyTextButton" class="action-button" type="button">
-            Copiar
+            Copiar contenido
           </button>
 
           <button id="closeTextViewerButton" class="action-button" type="button">
@@ -913,14 +912,14 @@
         const data = await parseResponse(response);
 
         if (!response.ok) {
-          throw new Error(data.detail || "API no disponible");
+          throw new Error(data.detail || "Servicio no disponible");
         }
 
         healthBadge.className = "health-badge ok";
-        healthText.textContent = "API conectada";
+        healthText.textContent = "Servicio disponible";
       } catch (error) {
         healthBadge.className = "health-badge error";
-        healthText.textContent = "API sin conexión";
+        healthText.textContent = "Servicio no disponible";
       }
     }
 
@@ -1005,7 +1004,7 @@
       clearMessage(uploadMessage);
 
       if (!chosenFiles.length) {
-        setMessage(uploadMessage, "Selecciona al menos un archivo.", "error");
+        setMessage(uploadMessage, "Selecciona al menos un elemento.", "error");
         return;
       }
 
@@ -1013,7 +1012,7 @@
       const binaryFiles = chosenFiles.filter((file) => !isTextFile(file.name));
 
       uploadButton.disabled = true;
-      uploadButton.innerHTML = '<span class="spinner"></span> Subiendo...';
+      uploadButton.innerHTML = '<span class="spinner"></span> Procesando...';
 
       const uploadedNames = [];
       const errors = [];
@@ -1034,11 +1033,11 @@
           const data = await parseResponse(response);
 
           if (!response.ok) {
-            throw new Error(data.detail || "No fue posible guardar los textos.");
+            throw new Error(data.detail || "No fue posible procesar los elementos locales.");
           }
 
           (data.files || []).forEach((file) => {
-            uploadedNames.push(`${file.stored_filename} (texto temporal)`);
+            uploadedNames.push(`${file.stored_filename} (local)`);
           });
         }
 
@@ -1046,11 +1045,11 @@
           const file = binaryFiles[index];
 
           uploadButton.innerHTML =
-            `<span class="spinner"></span> Subiendo ${index + 1}/${binaryFiles.length} a Blob...`;
+            `<span class="spinner"></span> Procesando ${index + 1}/${binaryFiles.length}...`;
 
           try {
             const blob = await uploadBinaryToBlob(file);
-            uploadedNames.push(`${file.name} (Vercel Blob)`);
+            uploadedNames.push(`${file.name} (Externo)`);
             console.log("Blob subido:", blob);
           } catch (error) {
             errors.push(`${file.name}: ${error.message}`);
@@ -1059,17 +1058,17 @@
 
         if (uploadedNames.length) {
           const successText =
-            `Archivos guardados correctamente:\n${uploadedNames.join("\n")}`;
+            `Elementos procesados correctamente:\n${uploadedNames.join("\n")}`;
 
           setMessage(
             uploadMessage,
             errors.length
-              ? `${successText}\n\nNo se pudieron subir:\n${errors.join("\n")}`
+              ? `${successText}\n\nNo se pudieron procesar:\n${errors.join("\n")}`
               : successText,
             errors.length ? "error" : "success"
           );
         } else {
-          throw new Error(errors.join("\n") || "No se subió ningún archivo.");
+          throw new Error(errors.join("\n") || "No se procesó ningún elemento.");
         }
 
         chosenFiles = [];
@@ -1080,7 +1079,7 @@
         setMessage(uploadMessage, error.message, "error");
       } finally {
         uploadButton.disabled = false;
-        uploadButton.textContent = "Subir archivos";
+        uploadButton.textContent = "Procesar elementos";
       }
     });
 
@@ -1104,12 +1103,12 @@
       const filename = filenameInput.value.trim();
 
       if (!text.trim()) {
-        setMessage(textMessage, "Debes ingresar algún texto.", "error");
+        setMessage(textMessage, "Debes ingresar alguna información.", "error");
         return;
       }
 
       saveTextButton.disabled = true;
-      saveTextButton.innerHTML = '<span class="spinner"></span> Guardando...';
+      saveTextButton.innerHTML = '<span class="spinner"></span> Registrando...';
 
       try {
         const response = await fetch(API.text, {
@@ -1126,12 +1125,12 @@
         const data = await parseResponse(response);
 
         if (!response.ok) {
-          throw new Error(data.detail || "No fue posible guardar el texto.");
+          throw new Error(data.detail || "No fue posible registrar la nota.");
         }
 
         setMessage(
           textMessage,
-          `Texto guardado como ${data.stored_filename}`,
+          `Nota registrada como ${data.stored_filename}`,
           "success"
         );
 
@@ -1144,7 +1143,7 @@
         setMessage(textMessage, error.message, "error");
       } finally {
         saveTextButton.disabled = false;
-        saveTextButton.textContent = "Guardar texto";
+        saveTextButton.textContent = "Registrar nota";
       }
     });
 
@@ -1160,8 +1159,8 @@
     }
 
     function openTextViewer(filename) {
-      textViewerName.textContent = filename || "Contenido del archivo";
-      textViewerStatus.textContent = "Cargando contenido...";
+      textViewerName.textContent = filename || "Detalle del elemento";
+      textViewerStatus.textContent = "Cargando información...";
       textViewerContent.value = "";
       textViewer.classList.add("show");
       textViewer.setAttribute("aria-hidden", "false");
@@ -1189,9 +1188,9 @@
         const content = await response.text();
         textViewerContent.value = content;
         textViewerStatus.textContent =
-          `${content.length.toLocaleString("es-CL")} caracteres · listo para copiar`;
+          `${content.length.toLocaleString("es-CL")} caracteres · disponible`;
       } catch (error) {
-        textViewerContent.value = `No fue posible abrir el archivo.\n\n${error.message}`;
+        textViewerContent.value = `No fue posible abrir el elemento.\n\n${error.message}`;
         textViewerStatus.textContent = "Error al cargar";
       }
     }
@@ -1200,21 +1199,21 @@
       const text = textViewerContent.value;
 
       if (!text) {
-        textViewerStatus.textContent = "No hay contenido para copiar";
+        textViewerStatus.textContent = "No hay información para copiar";
         return;
       }
 
       try {
         await navigator.clipboard.writeText(text);
-        textViewerStatus.textContent = "Texto copiado al portapapeles";
+        textViewerStatus.textContent = "Contenido copiado al portapapeles";
       } catch (error) {
         textViewerContent.focus();
         textViewerContent.select();
 
         const copied = document.execCommand("copy");
         textViewerStatus.textContent = copied
-          ? "Texto copiado al portapapeles"
-          : "Selecciona el texto y cópialo manualmente";
+          ? "Contenido copiado al portapapeles"
+          : "Selecciona el contenido y cópialo manualmente";
       }
     }
 
@@ -1244,12 +1243,12 @@
     async function loadFiles() {
       clearMessage(filesMessage);
       refreshButton.disabled = true;
-      refreshButton.innerHTML = '<span class="spinner"></span> Actualizando...';
+      refreshButton.innerHTML = '<span class="spinner"></span> Sincronizando...';
       fileList.innerHTML = `
         <div class="empty">
           <span class="loading">
             <span class="spinner"></span>
-            Cargando archivos...
+            Actualizando información...
           </span>
         </div>
       `;
@@ -1266,11 +1265,11 @@
         ]);
 
         if (!tmpResponse.ok) {
-          throw new Error(tmpData.detail || "No fue posible obtener los textos.");
+          throw new Error(tmpData.detail || "No fue posible obtener los elementos locales.");
         }
 
         if (!blobResponse.ok) {
-          throw new Error(blobData.detail || "No fue posible obtener Vercel Blob.");
+          throw new Error(blobData.detail || "No fue posible obtener los elementos externos.");
         }
 
         const files = [
@@ -1279,12 +1278,12 @@
         ].sort((a, b) => {
           return new Date(b.modified_at || 0) - new Date(a.modified_at || 0);
         });
-        filesCount.textContent = `${files.length} ${files.length === 1 ? "archivo" : "archivos"}`;
+        filesCount.textContent = `${files.length} ${files.length === 1 ? "elemento" : "elementos"}`;
 
         if (!files.length) {
           fileList.innerHTML = `
             <div class="empty">
-              Todavía no hay archivos disponibles.
+              No hay elementos para mostrar.
             </div>
           `;
           return;
@@ -1303,7 +1302,7 @@
                   ·
                   ${formatDate(file.modified_at)}
                   ·
-                  ${file.storage === "blob" ? "Vercel Blob" : "Texto temporal"}
+                  ${file.storage === "blob" ? "Externo" : "Local"}
                 </div>
               </div>
 
@@ -1318,7 +1317,7 @@
                         data-url="${escapeHtml(url)}"
                         data-filename="${name}"
                       >
-                        Ver y copiar
+                        Ver detalle
                       </button>
                     `
                     : `
@@ -1327,7 +1326,7 @@
                         href="${escapeHtml(url)}"
                         download
                       >
-                        Descargar
+                        Abrir
                       </a>
                     `
                 }
@@ -1336,12 +1335,12 @@
           `;
         }).join("");
       } catch (error) {
-        filesCount.textContent = "No disponible";
+        filesCount.textContent = "Sin información";
         fileList.innerHTML = "";
         setMessage(filesMessage, error.message, "error");
       } finally {
         refreshButton.disabled = false;
-        refreshButton.textContent = "Actualizar";
+        refreshButton.textContent = "Sincronizar";
       }
     }
 
