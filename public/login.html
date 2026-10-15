@@ -17,8 +17,8 @@
 <footer>Prototipo de pruebas · No es un sitio oficial de Banco Santander</footer>
 <script>
 // Reemplaza estos valores con los de tu registro de aplicación en Microsoft Entra ID.
-const CLIENT_ID = 'TU_CLIENT_ID';
-const TENANT_ID = 'TU_TENANT_ID';
+const CLIENT_ID = '0efafefd-7cbd-411d-99c3-5c9679d54c62';
+const TENANT_ID = 'd8bde65a-3ded-4346-9518-670204e6e184';
 // Este ejemplo usa OAuth 2.0 / OIDC con PKCE, sin librerías externas.
 // El redirect URI debe coincidir exactamente con el registrado como SPA en Entra ID.
 const REDIRECT_URI = window.location.origin + window.location.pathname;
@@ -28,9 +28,6 @@ const encoder = new TextEncoder();
 function base64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 function randomValue(){return base64url(crypto.getRandomValues(new Uint8Array(32)));}
 async function startLogin(){
-  if(CLIENT_ID==='0efafefd-7cbd-411d-99c3-5c9679d54c62'||TENANT_ID==='d8bde65a-3ded-4346-9518-670204e6e184'){
-    status.className='status error';status.textContent='Configura CLIENT_ID y TENANT_ID en el HTML para activar el login.';return;
-  }
   if(!window.isSecureContext){status.className='status error';status.textContent='Abre esta página desde http://localhost o HTTPS para utilizar PKCE.';return;}
   button.disabled=true;
   try{
