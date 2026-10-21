@@ -36,6 +36,3 @@ vercel env pull .env.local
 - `GET /api/blobs`: lista archivos del Blob Store.
 - `GET /health`: estado de FastAPI.
 
-## Nota
-
-El Blob Store está configurado como público. Cualquier persona que conozca la URL de un archivo puede acceder a él. Para documentos sensibles se necesita Blob privado y autenticación.
