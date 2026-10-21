@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "cl.santander.neocrm",
-    "sha256_cert_fingerprints": ["AA:35:E3:12:CD:F3:8D:EC:DD:84:4D:D8:61:BE:FD:8A:FE:DB:A9:C7:77:4B:31:67:2E:BA:56:BF:44:01:D4:FA"]
+    "sha256_cert_fingerprints": ["1AA:35:E3:12:CD:F3:8D:EC:DD:84:4D:D8:61:BE:FD:8A:FE:DB:A9:C7:77:4B:31:67:2E:BA:56:BF:44:01:D4:FA"]
   }
 }]
